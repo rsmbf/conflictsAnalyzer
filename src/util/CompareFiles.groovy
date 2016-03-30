@@ -51,40 +51,9 @@ class CompareFiles {
 
 		//move files that remained the same or only one version differs
 		String baseFolder = this.revDir + File.separator + this.baseRevName
-		moveFilesOnSingleVersion(baseFolder.replaceFirst(baseRevName, leftRevName),this.leftRevName, this.rightRevName, this.baseRevName)
-		moveFilesOnSingleVersion(baseFolder.replaceFirst(baseRevName, rightRevName),this.rightRevName, this.leftRevName, this.baseRevName)
 		this.iterateRevFolders(this.leftRevName, this.baseRevName, baseFolder, this.rightRevName)
 	}
-	
-	public void moveFilesOnSingleVersion(String currentFolder, String currentRevName, String otherRevName, String baseRevName)
-	{
-		File directory = new File(currentFolder)
-		if(directory.exists())
-		{
-			File[] fList = directory.listFiles()
-			for(File file: fList)
-			{
-				if(file.isDirectory())
-				{
-					moveFilesOnSingleVersion(file.getAbsolutePath(), currentRevName, otherRevName, baseRevName);
-				}else{
-					String otherFilePath = file.getAbsolutePath().replaceFirst(currentRevName, otherRevName)
-					String baseFilePath = file.getAbsolutePath().replaceFirst(currentRevName, baseRevName)
-					File otherFile = new File(otherFilePath)
-					File baseFile = new File(baseFilePath)
-					if(!otherFile.exists() && !baseFile.exists())
-					{
-						this.moveAndDeleteFiles(currentRevName, file)
-					}else if(baseFile.exists() && !otherFile.exists())
-					{
-						file.delete()
-						baseFile.delete()
-					}
-				}
-			}
-		}
-	}
-
+		
 	private void iterateRevFolders(String leftRevName, String baseRevName, String baseFolder, String rightRevName){
 
 		File directory = new File(baseFolder)
