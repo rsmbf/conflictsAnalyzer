@@ -215,7 +215,10 @@ public class Util {
 			i++;
 		}
 		String newArgsStr = String.join(",", args);
-		return signature.replace(oldArgsStr, newArgsStr);
+		int paramsBegin = signature.indexOf("(");
+		String methodName = signature.substring(0, paramsBegin);
+		String paramsPart = signature.substring(paramsBegin);
+		return methodName + paramsPart.replace(oldArgsStr, newArgsStr);
 	}
 		
 	public static boolean isPrimitiveType(String typeStr)
@@ -311,5 +314,6 @@ public class Util {
 			    + "}", imports, "(default package)",""));
 		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(B[]-B[]-C-C-Object-Object-Hello-Hello) throws Exeception"))), imports, "paramsEx", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src/paramsEx"));
 		System.out.println(includeFullArgsTypes("longAndAdd()", imports, "rx.internal.util","/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/downloads/RxJava/revisions/rev_5d513_a9cd9/rev_5d513-a9cd9/src/test/java/rx/internal/util"));
+		System.out.println(includeFullArgsTypes("void redis.clients.jedis.BinaryJedis.initializeClientFromURI(URI)", new ArrayList<String>(Arrays.asList(new String[]{"java.net.URI"})),"paramsEx", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src/paramsEx"));
 	}
 }
