@@ -30,6 +30,8 @@ class MethodEditedByBothRevs {
 	
 	private List<String> imports
 	
+	private int length
+	
 	public MethodEditedByBothRevs(FSTTerminal n, String path){
 		this.packageName = ''
 		this.imports = new ArrayList<String>()
@@ -40,6 +42,7 @@ class MethodEditedByBothRevs {
 		this.annotateMethod()
 		this.leftLines  = new ArrayList<Integer>()
 		this.rightLines = new ArrayList<Integer>()
+		this.length = node.getBody().split("\n").length
 	}
 	
 	public void setSignature(){
@@ -54,7 +57,12 @@ class MethodEditedByBothRevs {
 		} else {
 			returnType = Util.getMethodReturnType(this.node.getBody(), imports, packageName, new File(filePath).getParent())
 		}
-		this.signature = returnType + " " +this.packageName + '.' + className + '.' + Util.includeFullArgsTypes(methodName, imports, packageName, new File(filePath).getParent())
+		String innerClass = ""
+		if(this.node.getParent().getType().equals("InnerClassDecl"))
+		{
+			innerClass = '\$' + this.node.getParent().getName()
+		}
+		this.signature = returnType + " " +this.packageName + '.' + className + innerClass + '.' + Util.includeFullArgsTypes(methodName, imports, packageName, new File(filePath).getParent())
 	}
 	
 	public void retrieveFilePath(FSTNode n, String path){
@@ -272,4 +280,8 @@ class MethodEditedByBothRevs {
 		this.END_SEPARATOR = '// END ' + this.node.getName() + '//'
 	}
 
+	public int getLength()
+	{
+		return length
+	}	
 }
