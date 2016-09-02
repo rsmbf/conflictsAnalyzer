@@ -1,9 +1,12 @@
 package main
+import java.util.List;
 import java.util.HashMap;
 import java.util.Hashtable
 
 import util.CSVAnalyzer;
+
 import org.apache.commons.io.FileUtils
+
 import util.Util
 
 
@@ -31,13 +34,60 @@ class RunStudy {
 		def projectsList = new File(args[0])
 		updateGitMinerConfig(args[1])
 		def projectsDatesFolder = args[2]
+		def startYear = null
+		def endYear = null
+		def startIndex = 0
+		def endIndex = null
+		if(args != null && args.length > 3)
+		{
+			def yearRange = new File(args[3])
+			if(yearRange.exists())
+			{
+				String[] splitRange = yearRange.readLines()[0].split("-")
+				if(splitRange.length >= 1 && splitRange[0].length() > 0)
+				{
+					startYear = splitRange[0].toInteger()
+				}
+				if(splitRange.length == 2 && splitRange[1].length() > 0)
+				{
+					endYear = splitRange[1].toInteger()
+				}
+			}
+			if(args.length > 4)
+			{
+				def numProjects = null
+				for(int argI = 4; argI < args.length; argI++)
+				{
+					def fullStr = args[argI]
+					if(fullStr != null){
+						def splitStr = fullStr.split("=")
+						if(splitStr[0] != null && splitStr[0].equals("startLine"))
+						{
+							startIndex = Integer.parseInt(splitStr[1]) - 1
+						}else if(splitStr[0] != null && splitStr[0].equals("numProjects"))
+						{
+							numProjects =  Integer.parseInt(splitStr[1])
+						}
+					}
+				}
+				if(numProjects != null)
+				{
+					endIndex = startIndex + numProjects
+				}
+			}
+		}
 		List<String> lines = projectsList.readLines()
+		
+		if(endIndex == null){
+			endIndex = lines.size()
+		}
+		 
 		this.createResultDir()
-
+		List<String> filtLines = lines.subList(startIndex, endIndex)
 		//lines.remove(0)
 		//for each project
-		lines.each() {
-
+		filtLines.each() {
+			print it + "\n"
 			//set project name
 			setProjectNameAndRepo(it)
 
@@ -48,23 +98,34 @@ class RunStudy {
 
 			/*attention, if you have already downloaded gitminer base you can comment
 			 the line below and use the second line below*/
-
+			
+			String graphBase
+			if(new File(this.gitminerLocation + File.separator + this.projectName + 'graph.db').exists()){
+				graphBase = this.gitminerLocation + File.separator + this.projectName + 'graph.db'
+			}else{
+				graphBase = runGitMiner()
+			}
 			//String graphBase = runGitMiner()
-			String graphBase = this.gitminerLocation + File.separator + this.projectName + 'graph.db'
+			//String graphBase = this.gitminerLocation + File.separator + this.projectName + 'graph.db'
 
 			//get list of merge commits
+			
 			ArrayList<MergeCommit> listMergeCommits = runGremlinQuery(graphBase)
+			for(MergeCommit mc : listMergeCommits)
+			{
+					println mc.sha
+			}
 
 			//create project and extractor
 			Extractor extractor = this.createExtractor(this.projectName, graphBase)
 			Project project = new Project(this.projectName, periods)
 
 			//for each merge scenario, clone and run SSMerge on it
-			analyseMergeScenario(listMergeCommits, extractor, project)
+			analyseMergeScenario(listMergeCommits, extractor, project, startYear, endYear)
 
 			//print project report and call R script
 			ConflictPrinter.printProjectData(project)
-			this.callRScript()
+			//this.callRScript() 
 		}
 
 	}
@@ -73,45 +134,49 @@ class RunStudy {
 
 		ArrayList<ProjectPeriod> periods = new ArrayList<ProjectPeriod>()
 		def projectDatesFile = new File(projectsDatesFolder + File.separator + this.projectName + ".txt")
-		List<String> projectPeriodsList = projectDatesFile.readLines()
-		projectPeriodsList.remove(0)
+		if(projectDatesFile.exists())
+		{
+			List<String> projectPeriodsList = projectDatesFile.readLines()
+			projectPeriodsList.remove(0)
 
-		projectPeriodsList.each(){ infoLine ->
-			String[] projectInfo = infoLine.split(",")
-			Date startDate = null
-			Date endDate = null
-			String binPath = "/bin"
-			String srcPath = "/src"
-			String libPaths = null
-			String buildSystem = null
-			if(projectInfo.length > 0 && !projectInfo[0].trim().equals(""))
-			{
-				startDate = Date.parse('dd/MM/yyyy', projectInfo[0])
-			}
+			projectPeriodsList.each(){ infoLine ->
+				String[] projectInfo = infoLine.split(",")
+				Date startDate = null
+				Date endDate = null
+				String binPath = ""
+				String srcPath = "/src"
+				String libPaths = null
+				String buildSystem = null
+				if(projectInfo.length > 0 && !projectInfo[0].trim().equals(""))
+				{
+					startDate = Date.parse('dd/MM/yyyy', projectInfo[0])
+				}
 
-			if(projectInfo.length > 1 && !projectInfo[1].trim().equals(""))
-			{
-				endDate = Date.parse('dd/MM/yyyy', projectInfo[1])
-			}
-			if(projectInfo.length > 2 && !projectInfo[2].trim().equals("")){
-				binPath = projectInfo[2].trim()
-			}
+				if(projectInfo.length > 1 && !projectInfo[1].trim().equals(""))
+				{
+					endDate = Date.parse('dd/MM/yyyy', projectInfo[1])
+				}
+				if(projectInfo.length > 2 && !projectInfo[2].trim().equals("")){
+					binPath = projectInfo[2].trim()
+				}
 
-			if(projectInfo.length > 3 && !projectInfo[3].trim().equals("")){
-				srcPath = projectInfo[3].trim()
-			}
+				if(projectInfo.length > 3 && !projectInfo[3].trim().equals("")){
+					srcPath = projectInfo[3].trim()
+				}
 
-			if(projectInfo.length > 4 && !projectInfo[4].trim().equals(""))
-			{
-				libPaths = projectInfo[4].trim()
-			}
+				if(projectInfo.length > 4 && !projectInfo[4].trim().equals(""))
+				{
+					libPaths = projectInfo[4].trim()
+				}
 
-			if(projectInfo.length > 5 && !projectInfo[5].trim().equals(""))
-			{
-				buildSystem = projectInfo[5].trim()
+				if(projectInfo.length > 5 && !projectInfo[5].trim().equals(""))
+				{
+					buildSystem = projectInfo[5].trim()
+				}
+				periods.add(new ProjectPeriod(startDate, endDate, binPath, srcPath, libPaths, buildSystem))
 			}
-			periods.add(new ProjectPeriod(startDate, endDate, binPath, srcPath, libPaths, buildSystem))
 		}
+
 		return periods
 	}
 
@@ -123,85 +188,153 @@ class RunStudy {
 	}
 
 	private void analyseMergeScenario(ArrayList listMergeCommits, Extractor extractor,
-			Project project) {
+			Project project, def startYear, def endYear) {
 		//if project execution breaks, update current with next merge scenario number
-		int current = 0;
-		int end = listMergeCommits.size()
+		int current = 0//696//304//303//236//1349//1348//800//799//776//775//708//670//465//459//449//444//370//318//290//273//259//239//223//195//147
+		int end = listMergeCommits.size()//237//listMergeCommits.size()
+		int[] desiredIndexes = []/*694..705//*///[]
 
 		List<ProjectPeriod> periods = project.getProjectPeriods()
 		String reportsPath = new File(downloadPath).getParent() + File.separator + "reports" + File.separator + project.name
-
+		List<Integer> indexes = new ArrayList<Integer>()
 		//for each merge scenario analyze it
 		while(current < end){
 
 			int index = current + 1;
 			println 'Merge scenario [' + index + '] from a total of [' + end +
 					'] merge scenarios\n'
-
-			MergeCommit mc = listMergeCommits.get(current)
-
-			MatchingProjectPeriod p = this.getPeriodMatch(periods, mc)
-
-
-			if(p.periodMatch)
+			if(desiredIndexes.size() == 0 || desiredIndexes.contains(index))
 			{
-				println 'Analyzing merge scenario...'
+				MergeCommit mc = listMergeCommits.get(current)
 
-				/*download left, right, and base revisions, performs the merge and saves in a
-				 separate file*/
-				ExtractorResult mergeResult = extractor.extractCommit(mc)
+				MatchingProjectPeriod p = this.getPeriodMatch(periods, mc)
+				def year = mc.getDate()[Calendar.YEAR]
+				if(p.periodMatch && (startYear == null || year >= startYear) &&
+				(endYear == null || year <= endYear))
+				{
+					println 'Analyzing merge scenario...'
 
-				String revisionFile = mergeResult.getRevisionFile()
+					/*download left, right, and base revisions, performs the merge and saves in a
+					 separate file*/
+					ExtractorResult mergeResult = extractor.extractCommit(mc)
 
-				if(!revisionFile.equals("")){
+					String revisionFile = mergeResult.getRevisionFile()
 
-					//run ssmerge and conflict analysis
-					SSMergeResult ssMergeResult = runConflictsAnalyzer(project, revisionFile,
-							mergeResult.getNonJavaFilesWithConflict().isEmpty())
+					if(!revisionFile.equals("")){
+						try{
+							//run ssmerge and conflict analysis
+							SSMergeResult ssMergeResult = runConflictsAnalyzer(project, revisionFile,
+									mergeResult.getNonJavaFilesWithConflict().isEmpty())
 
-					boolean hasConflicts = ssMergeResult.getHasConflicts()
-					println hasConflicts
-					if(!hasConflicts){
-						//get line of the files containing methods for joana analysis
-						Map<String, ArrayList<MethodEditedByBothRevs>> filesWithMethodsToJoana =
-								ssMergeResult.getFilesWithMethodsToJoana()
-						if(filesWithMethodsToJoana.size() > 0)
-						{
-							println index + ", " + filesWithMethodsToJoana.keySet()
-							String revPath = revisionFile.replace(".revisions", "")
-							String reportsFilePath = reportsPath + File.separator + (new File(revPath).getName())
-							File reportsRevDir = new File(reportsFilePath)
-							reportsRevDir.deleteDir()
-							reportsRevDir.mkdirs()
-							File emptyContribs = new File(reportsFilePath + File.separator + "emptyContributions.txt")
-							emptyContribs.createNewFile()
-							//Map ssmerge objects to joana objects
-							Map<String, ModifiedMethod> methods = getJoanaMap(emptyContribs, filesWithMethodsToJoana)
-							if(emptyContribs.length() == 0)
-							{
-								emptyContribs.delete()
-							}
-							if(methods.size() > 0)
-							{
-
-								String revGitPath = revPath + File.separator + "git"
-								File revGitFile = new File(revGitPath)
-
-								def repoDir = new File(downloadPath +File.separator+ projectName + File.separator + "git")
-								FileUtils.copyDirectory(new File(revPath), revGitFile)
-								copyGitFiles(repoDir, repoDir, revGitFile)
-
-								File buildResultFile = new File(reportsFilePath + File.separator + "build_report.txt")
-								buildResultFile.createNewFile()
-								if(build(p.period.getBuildSystem(),revGitPath, buildResultFile))
+							boolean hasConflicts = ssMergeResult.getHasConflicts()
+							println hasConflicts
+							if(!hasConflicts){
+								//get line of the files containing methods for joana analysis
+								Map<String, ArrayList<MethodEditedByBothRevs>> filesWithMethodsToJoana =
+										ssMergeResult.getFilesWithMethodsToJoana()
+								if(filesWithMethodsToJoana.size() > 0)
 								{
-									//call joana analysis
-									println "Calling Joana"
-									JoanaInvocation joana = new JoanaInvocation(revGitPath, methods, p.period.getBinPath(),
-											p.period.getSrcPath(), p.period.getLibPaths(), reportsFilePath)
-									joana.run()
+									String revPath = revisionFile.replace(".revisions", "")
+									indexes.add(index)
+									println index + ", " + filesWithMethodsToJoana.keySet()
+									File editSameMCContribs = new File(reportsPath + File.separator + "editSameMCcontribs.csv")
+									new File(reportsPath).mkdirs()
+									editSameMCContribs.createNewFile()
+									if(editSameMCContribs.readLines().empty)
+									{
+										editSameMCContribs.append "Index; Revision; Date; File; Signature; Number of Lines; Left; Right" + "\n"
+									}
+									//List<String> methodsList = new ArrayList<String>()
+									for(String file : filesWithMethodsToJoana.keySet())
+									{
+										for(MethodEditedByBothRevs method : filesWithMethodsToJoana.get(file))
+										{
+											//methodsList.add(method.getSignature() + " - LENGTH: " + method.getLength() + " - LEFT: "+method.getLeftLines() + " - RIGHT: "+method.getRightLines())
+											editSameMCContribs.append index + "; "+ new File(revPath).getName() + "; " + mc.date + "; "
+											editSameMCContribs.append file + "; " + method.getSignature() + "; " + method.getLength() + "; "
+											editSameMCContribs.append method.getLeftLines().toListString() + "; " + method.getRightLines().toListString()	+ "\n"
+										}
+									}
+									/*
+									 editSameMCContribs.append index + " - "+new File(revPath).getName()+ " - Date: "+mc.date+ " - Size: "+methodsList.size() +"\n"
+									 for(String method : methodsList){
+									 editSameMCContribs.append "	"+method +"\n"
+									 }
+									 */
+									/*
+									 String reportsFilePath = reportsPath + File.separator + (new File(revPath).getName())
+									 File reportsRevDir = new File(reportsFilePath)
+									 reportsRevDir.deleteDir()
+									 reportsRevDir.mkdirs()
+									 File emptyContribs = new File(reportsFilePath + File.separator + "emptyContributions.txt")
+									 emptyContribs.createNewFile()
+									 */
+									//Map ssmerge objects to joana objects
+
+									/*
+									 Map<String, ModifiedMethod> methodsMap = getJoanaMap(emptyContribs, filesWithMethodsToJoana)
+									 if(emptyContribs.length() == 0)
+									 {
+									 emptyContribs.delete()
+									 }
+									 if(methodsMap.size() > 0)
+									 {
+									 /*
+									 String revGitPath = revPath + File.separator + "git"
+									 File revGitFile = new File(revGitPath)
+									 */
+
+									//copy revision folder
+									/*
+									 def repoDir = new File(downloadPath +File.separator+ projectName + File.separator + "git")
+									 File revEditSameMc = new File(revPath.replace("revisions","editsamemc_revisions"))
+									 FileUtils.copyDirectory(new File(new File(revPath).getParent()), new File(revEditSameMc.getParent()))
+									 File revGitEditSameMc = new File(revEditSameMc.absolutePath + File.separator + "git")
+									 FileUtils.copyDirectory(new File(revPath), revGitEditSameMc)
+									 copyGitFiles(repoDir, repoDir, revGitEditSameMc)
+									 */
+
+									/*
+									 copyGitFiles(repoDir, repoDir, revEditSameMc)
+									 String base 
+									 int i = 0
+									 File revParent = new File(revEditSameMc.getParent())
+									 while(i < revParent.listFiles().length && 
+									 (!revParent.listFiles()[i].isDirectory() || !revParent.listFiles()[i].name.contains("rev_base")))
+									 {										
+									 i++;
+									 }
+									 if(i < revParent.listFiles().length)
+									 {
+									 base = revParent.listFiles()[i].name
+									 copyGitFiles(repoDir, repoDir, new File(revParent.absolutePath + File.separator + base))
+									 }
+									 String leftANDright = revEditSameMc.name.replace("rev_", "")
+									 String left = "rev_left_"+leftANDright.substring(0,5)
+									 String right = "rev_right_"+leftANDright.substring(6)
+									 copyGitFiles(repoDir, repoDir, new File(revParent.absolutePath + File.separator + left))
+									 copyGitFiles(repoDir, repoDir, new File(revParent.absolutePath + File.separator + right))
+									 */
+									/*
+									 FileUtils.copyDirectory(new File(revPath), revGitFile)
+									 copyGitFiles(repoDir, repoDir, revGitFile)
+									 File buildResultFile = new File(reportsFilePath + File.separator + "build_report.txt")
+									 buildResultFile.createNewFile()
+									 if(build(p.period.getBuildSystem(),revGitPath, buildResultFile))
+									 {
+									 //call joana analysis
+									 println "Calling Joana"
+									 JoanaInvocation joana = new JoanaInvocation(revGitPath, methods, p.period.getBinPath(),
+									 p.period.getSrcPath(), p.period.getLibPaths(), reportsFilePath)
+									 joana.run()
+									 }
+									 }
+									 */
 								}
 							}
+						}catch(Exception e)
+						{
+							e.printStackTrace()
 						}
 					}
 				}
@@ -210,34 +343,39 @@ class RunStudy {
 			current++
 
 		}
-
+		println indexes
 	}
 
 	private MatchingProjectPeriod getPeriodMatch(List<ProjectPeriod> periods, MergeCommit mc){
 		boolean periodMatch = false
-
-		int currentPeriod = 0
 		ProjectPeriod period = null
-		Date startDate = null
-		Date finalDate = null
-
-		while(currentPeriod < periods.size() && !periodMatch)
+		if(periods.size() > 0)
 		{
-			period = periods[currentPeriod]
-			startDate = period.getStartDate()
-			finalDate = period.getEndDate()
-			periodMatch = (startDate == null || mc.date.clearTime() >= startDate) &&
-					(finalDate == null || mc.date.clearTime() <= finalDate)
-			if(!periodMatch)
+			int currentPeriod = 0
+
+			Date startDate = null
+			Date finalDate = null
+
+			while(currentPeriod < periods.size() && !periodMatch)
 			{
-				currentPeriod++
+				period = periods[currentPeriod]
+				startDate = period.getStartDate()
+				finalDate = period.getEndDate()
+				periodMatch = (startDate == null || mc.date.clearTime() >= startDate) &&
+						(finalDate == null || mc.date.clearTime() <= finalDate)
+				if(!periodMatch)
+				{
+					currentPeriod++
+				}
 			}
+		}else{
+			periodMatch = true
 		}
 
 		MatchingProjectPeriod result = new MatchingProjectPeriod(periodMatch, period)
 		return result
 	}
-
+/*
 	private Map getJoanaMap(File emptyContributions,Map filesWithMethodsToJoana) {
 		Map<String, ModifiedMethod> methods = new HashMap<String, ModifiedMethod>()
 		for(String file : filesWithMethodsToJoana.keySet()) {
@@ -264,7 +402,7 @@ class RunStudy {
 		}
 		return methods
 	}
-
+*/
 	private def copyGitFiles(File baseDir, File srcDir, File destDir)
 	{
 		String basePath = baseDir.getAbsolutePath()
@@ -284,7 +422,7 @@ class RunStudy {
 			}
 		}
 	}
-
+/*
 	private boolean build(String fullBuildSystem, String revGitPath, File buildResultFile) {
 		println "Building..."
 		int lastSeparator = fullBuildSystem.lastIndexOf(File.separator) + 1
@@ -294,15 +432,15 @@ class RunStudy {
 		if(buildSystem.equals("gradlew"))
 		{
 			def gradlewPath = revGitPath + File.separator+"gradlew"
-			buildCmd = "chmod +x "+gradlewPath + " && "+gradlewPath+" build -p"+revGitPath  /*+" -x test"*/
+			buildCmd = "chmod +x "+gradlewPath + " && "+gradlewPath+" build -p"+revGitPath //+" -x test"
 		}else if(buildSystem.equals("gradle"))
 		{
-			buildCmd += "gradle build -p"+revGitPath/*+" -x test"*/
+			buildCmd += "gradle build -p"+revGitPath/*+" -x test"* /
 		}else if(buildSystem.equals("ant"))
 		{
 			buildCmd += "ant build -buildfile "+ revGitPath + File.separator +"build.xml"
 		}else if(buildSystem.equals("mvn")){
-		buildCmd += "mvn compile "+ revGitPath + File.separator +"pom.xml"
+			buildCmd += "mvn compile "+ revGitPath + File.separator +"pom.xml"
 		}
 		//start here
 		ProcessBuilder builder = new ProcessBuilder("/bin/bash","-c",buildCmd);
@@ -323,7 +461,7 @@ class RunStudy {
 		}
 		return i >= 0 && buildLines.get(i).equals("BUILD SUCCESSFUL")
 	}
-
+*/
 	private Extractor createExtractor(String projectName, String graphBase){
 		GremlinProject gProject = new GremlinProject(this.projectName,
 				this.projectRepo, graphBase)
@@ -451,9 +589,12 @@ class RunStudy {
 
 	public static void main (String[] args){
 		RunStudy study = new RunStudy()
-		String[] files= ['projectsList', 'configuration.properties', 'ProjectsDatesInfo']
-		study.run(files)
+		String[] files= ['projectsList', 'configuration.properties',
+			'ProjectsDatesInfo','yearRange'/*,'startLine=1','numProjects=10'*/]
+		String[] fullArgs = files + args
+		study.run(fullArgs) 
 		//println study.build("/usr/local/bin/ant", "/Users/Roberto/Documents/UFPE/Msc/Projeto/projects/temp/voldemort", new File("/Users/Roberto/Documents/UFPE/Msc/Projeto/projects/temp/report.txt"))
+		//println study.build("/usr/local/bin/mvn", "/Users/Roberto/Documents/UFPE/Msc/Projeto/projects/temp/jedis", new File("/Users/Roberto/Documents/UFPE/Msc/Projeto/projects/temp/report.txt"))
 	}
 
 }
