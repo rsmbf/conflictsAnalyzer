@@ -15,6 +15,8 @@ class Project {
 	private int conflictingMergeScenarios
 	
 	private int conflictingScenariosOnlyNonJava
+	
+	private int editSameMcScenarios
 
 	private double conflictRate
 
@@ -54,6 +56,7 @@ class Project {
 		this.conflictingMergeScenarios = 0
 		this.conflictingScenariosOnlyNonJava = 0
 		this.conflictRate = 0.0
+		this.editSameMcScenarios = 0
 	}
 
 
@@ -96,7 +99,8 @@ class Project {
 			ms.analyzeConflicts()
 			SSMergeResult result = new SSMergeResult(ms.hasConflictsThatWereNotSolved(), ms.getFilesWithMethodsToJoana())
 			updateAndPrintSummary(ms)
-			//ms.deleteMSDir()
+			ms.copyMSDirIfEditSameMc()
+			ms.deleteMSDir()
 			
 			return result
 	}
@@ -119,6 +123,10 @@ class Project {
 		this.analyzedMergeScenarios++
 		if(ms.hasConflicts){
 			this.conflictingMergeScenarios++
+			if(ms.hasNonDsEditSameMcConflicts())//
+			{
+				this.editSameMcScenarios++
+			}
 		}else if(ms.hasConflictsThatWereNotSolved())
 		{
 			this.conflictingScenariosOnlyNonJava++
@@ -170,6 +178,7 @@ class Project {
 		String result = this.name + ', ' + this.analyzedMergeScenarios + ', ' +
 		this.conflictingScenariosOnlyNonJava + ', ' +
 		this.conflictingMergeScenarios + ', ' + 
+		this.editSameMcScenarios + ', ' +
 		ConflictSummary.printConflictsSummary(this.projectSummary) + ', ' +
 		ConflictSummary.printSameSignatureCMSummary(this.sameSignatureCMSummary) + ', ' +
 		this.possibleRenamings

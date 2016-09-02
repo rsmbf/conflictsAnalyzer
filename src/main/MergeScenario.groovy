@@ -1,6 +1,7 @@
 package main
 
 
+import java.io.File;
 import java.util.LinkedList
 import java.util.Map;
 import java.util.Observable;
@@ -13,6 +14,7 @@ import composer.rules.ImplementsListMerging
 import de.ovgu.cide.fstgen.ast.FSTNode;
 import de.ovgu.cide.fstgen.ast.FSTTerminal;
 
+import org.apache.commons.io.FileUtils
 
 class MergeScenario implements Observer {
 
@@ -70,6 +72,14 @@ class MergeScenario implements Observer {
 	public HashMap<String, Conflict> getMergeScenarioSummary(){
 		return this.mergeScenarioSummary
 	}
+	
+	public boolean hasNonDsEditSameMcConflicts()
+	{
+		def type = SSMergeConflicts.EditSameMC.toString()
+		def editSameMc = this.mergeScenarioSummary.get(type)
+		int diff =  editSameMc.getNumberOfConflicts() - editSameMc.getDifferentSpacing()
+		return diff > 0
+	}
 
 	public void setName(){
 		String [] temp = this.path.split('/')
@@ -106,6 +116,49 @@ class MergeScenario implements Observer {
 		}else{
 
 			println 'Merge scenario ' + this.path + ' not deleted!'
+		}
+	}
+	
+	public void copyMSDirIfEditSameMc()
+	{
+		/*
+		def repoDir = new File(downloadPath +File.separator+ projectName + File.separator + "git")
+		File revEditSameMc = new File(revPath.replace("revisions","editsamemc_revisions"))
+		FileUtils.copyDirectory(new File(new File(revPath).getParent()), new File(revEditSameMc.getParent()))
+		File revGitEditSameMc = new File(revEditSameMc.absolutePath + File.separator + "git")
+		FileUtils.copyDirectory(new File(revPath), revGitEditSameMc)
+		copyGitFiles(repoDir, repoDir, revGitEditSameMc)*/
+	
+		if(!hasConflictsThatWereNotSolved() && filesWithMethodsToJoana.size() > 0)
+		{
+			String revPath = path.replace(".revisions","")
+			String revPathParent = new File(revPath).getParent()
+			File repoDir = new File(new File(revPathParent).getParent().replace("revisions", "git"))
+			File revEditSameMc = new File(revPath.replace("revisions","editsamemc_revisions"))
+			FileUtils.copyDirectory(new File(revPathParent), new File(revEditSameMc.getParent()))
+			File revGitEditSameMc = new File(revEditSameMc.absolutePath + File.separator + "git")
+			FileUtils.copyDirectory(new File(revPath), revGitEditSameMc)
+			copyGitFiles(repoDir, repoDir, revGitEditSameMc)
+		}
+	}
+	
+	private def copyGitFiles(File baseDir, File srcDir, File destDir)
+	{
+		String basePath = baseDir.getAbsolutePath()
+		String destPath = destDir.getAbsolutePath()
+		File[] srcFiles = srcDir.listFiles()
+		for(File file : srcFiles)
+		{
+			if(file.getName().contains(".git"))
+			{
+				if(file.isFile())
+				{
+					FileUtils.copyFile(file, new File(file.getAbsolutePath().replace(basePath, destPath)))
+				}else if(file.isDirectory())
+				{
+					FileUtils.copyDirectory(file, new File(file.getAbsolutePath().replace(basePath, destPath)))
+				}
+			}
 		}
 	}
 

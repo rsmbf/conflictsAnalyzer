@@ -39,6 +39,7 @@ public class ConflictPrinter {
 		
 		if(!out.exists()){
 		String row = 'Project, Merge_Scenarios, Conflicting_Scenarios_Non_Java_Only, Conflicting_Scenarios_Java, ' +
+		'Conflicting_Scenarios_Java_EditSameMC, ' +
 		this.conflictReportHeader + '\n'
 
 		out.append(row)
@@ -57,6 +58,7 @@ public class ConflictPrinter {
 		
 		
 		String row = 'Project, Merge_Scenarios, Conflicting_Scenarios_Non_Java_Only, Conflicting_Scenarios_Java, ' +
+		'Conflicting_Scenarios_Java_EditSameMC, '+
 		this.conflictReportHeader + '\n'
 
 		out.append(row)
