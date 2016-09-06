@@ -167,7 +167,8 @@ class CompareFiles {
 			
 			if(!(source.endsWith(".java"))){
 				temp = sourceDir.getAbsolutePath().replaceFirst('rev_merged_git' , revName)
-				FileUtils.moveFile(sourceDir, new File(temp))
+				//FileUtils.moveFile(sourceDir, new File(temp))
+				FileUtils.copyFile(sourceDir, new File(temp))
 			}
 			
 		}else{
