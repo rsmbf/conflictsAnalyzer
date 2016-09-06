@@ -133,12 +133,18 @@ class MergeScenario implements Observer {
 		{
 			String revPath = path.replace(".revisions","")
 			String revPathParent = new File(revPath).getParent()
+			String revMergedPath = revPathParent + File.separator + "rev_merged_git"
 			File repoDir = new File(new File(revPathParent).getParent().replace("revisions", "git"))
 			File revEditSameMc = new File(revPath.replace("revisions","editsamemc_revisions"))
-			FileUtils.copyDirectory(new File(revPathParent), new File(revEditSameMc.getParent()))
+			File revEditSameMcParent = new File(revEditSameMc.getParent())
+			FileUtils.copyDirectory(new File(revPathParent), revEditSameMcParent)
 			File revGitEditSameMc = new File(revEditSameMc.absolutePath + File.separator + "git")
 			FileUtils.copyDirectory(new File(revPath), revGitEditSameMc)
 			copyGitFiles(repoDir, repoDir, revGitEditSameMc)
+			File revEditSameMcMerged = new File(revEditSameMcParent.absolutePath + File.separator + "rev_merged_git")
+			File revGitEditSameMcMerged = new File(revEditSameMcMerged.absolutePath + File.separator + "git")
+			FileUtils.copyDirectory(new File(revMergedPath), revGitEditSameMcMerged)
+			copyGitFiles(repoDir, repoDir, revGitEditSameMcMerged)
 		}
 	}
 	
@@ -399,7 +405,7 @@ class MergeScenario implements Observer {
 	}
 
 	public static void main(String[] args){
-		MergeScenario ms = new MergeScenario('/Users/paolaaccioly/Desktop/Teste/jdimeTests/rev.revisions', true)
+		MergeScenario ms = new MergeScenario('/Users/Roberto/Desktop/Teste/rev.revisions', true)
 		ms.analyzeConflicts()
 		/*Map <String,Conflict> mergeScenarioSummary = new HashMap<String, Conflict>()
 		 String type = SSMergeConflicts.EditSameMC.toString()
