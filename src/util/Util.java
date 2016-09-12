@@ -3,6 +3,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Util {	
@@ -199,18 +201,46 @@ public class Util {
 		return fullType;
 	}
 	
-	public static String includeFullArgsTypes(String signature, List<String> imports, String packageName, String packagePath)
+	public static String includeFullArgsTypes(String signature, String body, List<String> imports, String packageName, String packagePath)
 	{
+		/*String[] splittedSignature = signature.split("\\(");
+		String signatureMethName = splittedSignature[0];
+		String[] splittedBody = body.split(signatureMethName);
+		String fullBodyAfterName = splittedBody[1];
+		String bodyAfterName = fullBodyAfterName.split("\\(")[1];
+		String[] splittedBodyAfterName = bodyAfterName.split("\\)");
+		String bodyParamsPart = splittedBodyAfterName[0];
+		*/
+		String firstPatt = "(\\s)*([^\\.\\s]+[\\.[^\\.\\s]+]*)";
+		String sep = "(\\s)*(\\.\\.\\.)(\\s)*";
+		String secondPatt = "[^\\.\\s]+(\\s)*";
+		String patt = firstPatt + sep + secondPatt;
+		String internalPatt = firstPatt + "(" + sep + "|(\\s)+)" + secondPatt;
+		Pattern MY_PATTERN = Pattern.compile("\\(("+internalPatt+")?(,"+internalPatt+")*\\)");
+		Matcher m = MY_PATTERN.matcher(body);
+		String bodyParamsPart = "";
+		if(m.find()) {
+		    //System.out.println("matched");
+			String s = m.group();
+		    //System.out.println(s.substring(1, s.length() - 1));
+		    bodyParamsPart = s.substring(1, s.length() - 1);
+		}
+		//System.out.println("BODYPARAMSPART: "+bodyParamsPart);
+		String[] bodyParams = bodyParamsPart.split(",");
 		List<String> args = getArgs(signature);
 		String oldArgsStr = String.join(",", args);
 		int i = 0;
 		for(String arg : args)
 		{
 			String fullType = getFullType(arg, imports, packageName, packagePath);
-
 			if(!fullType.equals(arg))
 			{
 				args.set(i, fullType);
+			}
+			if(!arg.trim().endsWith("[]") && bodyParams.length > i &&
+					((bodyParams[i].trim().endsWith("[]")) || (bodyParams[i].matches(patt))))
+			{				
+				args.set(i, args.get(i) + "[]");
 			}
 			i++;
 		}
@@ -280,15 +310,17 @@ public class Util {
 		String str = "<T, S extends T> int copy(List<T> dest, List<S> src) {";
 		System.out.println(removeGenerics("soma(List<Integer>-List<Integer>-int-int)"));
 		System.out.println(removeGenerics(simplifyMethodSignature("soma(List<Integer>-List<Integer>-int-int) throws Exeception")));
+		
 		List<String> imports = new ArrayList<String>();
 		imports.add("rx.Scheduler");
 		imports.add("cin.ufpe.br.A");
 		imports.add("java.util.List");
-		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(List<Integer>-List<Integer>-int-int) throws Exeception"))), imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
-		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(List<Integer>-List<Integer>-Scheduler-Scheduler) throws Exeception"))), imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
-		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(String-String-Scheduler-Scheduler-Object-Object) throws Exeception"))), imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
-		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(String[]-String[]-Scheduler[]-Scheduler[]-Object-Object) throws Exeception"))), imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
-		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(Character.Subset-Character.Subset) throws Exeception"))), imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
+		System.out.println("HERE");
+		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(List<Integer>-List<Integer>-int-int) throws Exeception"))),"public int soma(List<Integer> a, int b) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
+		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(List<Integer>-List<Integer>-Scheduler-Scheduler) throws Exeception"))), "public int soma(List<Integer> a, Scheduler b) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
+		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(String-String-Scheduler-Scheduler-Object-Object) throws Exeception"))), "public int soma(String a, Scheduler b, Object c) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
+		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(String[]-String[]-Scheduler[]-Scheduler[]-Object-Object) throws Exeception"))), "public int soma(String[] a, Scheduler[] b, Object c) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
+		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(Character.Subset-Character.Subset) throws Exeception"))), "public int soma(Character.Subset a[]) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(removeGenerics("public List<Integer> soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}"));
 		System.out.println(getMethodReturnType("public List<Integer> soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(getMethodReturnType("public static List<Integer> soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
@@ -312,8 +344,15 @@ public class Util {
 			    + "    public void testIssue2890NoStackoverflow() throws InterruptedException {"
 			       + "assertEquals(n, counter.get());"
 			    + "}", imports, "(default package)",""));
-		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(B[]-B[]-C-C-Object-Object-Hello-Hello) throws Exeception"))), imports, "paramsEx", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src/paramsEx"));
-		System.out.println(includeFullArgsTypes("longAndAdd()", imports, "rx.internal.util","/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/downloads/RxJava/revisions/rev_5d513_a9cd9/rev_5d513-a9cd9/src/test/java/rx/internal/util"));
-		System.out.println(includeFullArgsTypes("void redis.clients.jedis.BinaryJedis.initializeClientFromURI(URI)", new ArrayList<String>(Arrays.asList(new String[]{"java.net.URI"})),"paramsEx", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src/paramsEx"));
+			    
+		System.out.println(includeFullArgsTypes(simplifyMethodSignature("main(String-String-String[]-String[]-String-String)"), "public static void main(String args[], String[] args2, String args3) {int a;}", imports, "", ""));
+		System.out.println(includeFullArgsTypes(simplifyMethodSignature("main(String[]-String[])"),"public static void main(String[] args) {int a;}", imports, "", ""));
+		System.out.println("OUT: "+includeFullArgsTypes(simplifyMethodSignature("main(String-String)"),"public static void main(String ... args) {int a;}", imports, "", ""));
+		System.out.println(includeFullArgsTypes(simplifyMethodSignature("main(String-String)"),"public static void main(String  ...   args) {int a;}", imports, "", ""));
+		System.out.println(includeFullArgsTypes(simplifyMethodSignature("main(String-String-String[]-String[]-String-String-String-String-String-String-String-String)"), "public static void main(String args[], String[] args2, String ...args5, String args3, String...args4, String... args6) {int a;}", imports, "", ""));
+		System.out.println(includeFullArgsTypes(simplifyMethodSignature("main(String-String-String[]-String[]-String-String-String-String-String-String-String-String)"), "public static void main(String args[], String[] args2, String ...args5, String args3, String...args4, String ... args6) {int a;}", imports, "", ""));
+		//System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(B[]-B[]-C-C-Object-Object-Hello-Hello) throws Exeception"))), imports, "paramsEx", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src/paramsEx"));
+		//System.out.println(includeFullArgsTypes("longAndAdd()", imports, "rx.internal.util","/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/downloads/RxJava/revisions/rev_5d513_a9cd9/rev_5d513-a9cd9/src/test/java/rx/internal/util"));
+		//System.out.println(includeFullArgsTypes("void redis.clients.jedis.BinaryJedis.initializeClientFromURI(URI)", new ArrayList<String>(Arrays.asList(new String[]{"java.net.URI"})),"paramsEx", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src/paramsEx"));*/
 	}
 }
