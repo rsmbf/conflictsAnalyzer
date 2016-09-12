@@ -157,8 +157,8 @@ class CompareFiles {
 
 	private void auxMoveFiles(File sourceDir){
 		String temp = ''
-		String leftId = this.leftRevName.substring(this.leftRevName.length() - 5)
-		String rightId = this.rightRevName.substring(this.rightRevName.length() - 5)
+		String leftId = this.leftRevName.length() > 5 ? this.leftRevName.substring(this.leftRevName.length() - 5) : this.leftRevName
+		String rightId = this.rightRevName.length() > 5 ? this.rightRevName.substring(this.rightRevName.length() - 5) : this.rightRevName
 		String revName = 'rev_' + leftId + '-' + rightId
 		
 		String source = sourceDir.getAbsolutePath()
