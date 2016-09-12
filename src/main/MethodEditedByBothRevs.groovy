@@ -62,7 +62,12 @@ class MethodEditedByBothRevs {
 		{
 			innerClass = '\$' + this.node.getParent().getName()
 		}
-		this.signature = returnType + " " +this.packageName + '.' + className + innerClass + '.' + Util.includeFullArgsTypes(methodName, this.node.getBody(), imports, packageName, new File(filePath).getParent())
+		String packageNameStr = ""
+		if(!this.packageName.equals(""))
+		{
+			packageNameStr = this.packageName + "."
+		}
+		this.signature = returnType + " " + packageNameStr + className + innerClass + '.' + Util.includeFullArgsTypes(methodName, this.node.getBody(), imports, packageName, new File(filePath).getParent())
 	}
 	
 	public void retrieveFilePath(FSTNode n, String path){
