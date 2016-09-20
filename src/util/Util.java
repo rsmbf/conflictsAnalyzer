@@ -268,7 +268,9 @@ public class Util {
 	}
 		
 	public static String getMethodReturnType(String methodSignature, List<String> imports, String packageName, String packagePath) {
-		String simplMethodSignature = methodSignature.replaceAll("// LEFT //", "").replaceAll("// RIGHT //", "");
+		String filtMethodSign = methodSignature.replaceAll("// LEFT //", "").replaceAll("// RIGHT //", "");
+		String partialFiltered = filtMethodSign.replaceAll("/\\*.*\\*/", "");
+		String simplMethodSignature = partialFiltered.replaceAll("//.*\n","\n");
 		String[] strs = simplMethodSignature.split("\\s+");
 		int i = 0;
 		while(i < strs.length && strs[i].startsWith("@"))
@@ -322,6 +324,42 @@ public class Util {
 		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(String[]-String[]-Scheduler[]-Scheduler[]-Object-Object) throws Exeception"))), "public int soma(String[] a, Scheduler[] b, Object c) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(includeFullArgsTypes(removeGenerics(simplifyMethodSignature(("soma(Character.Subset-Character.Subset) throws Exeception"))), "public int soma(Character.Subset a[]) {}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(removeGenerics("public List<Integer> soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}"));
+		String aux = "@Command(\n"+
+"            aliases = { \"load\", \"l\" },\n" +
+"            usage = \"[format] <filename>\",\n" +
+"// LEFT //            desc = \"Load a file into your clipboard\",\n" +
+"// LEFT //            help = \"Load a schematic file into your clipboard\n\" + \n" +
+"                    \"Format is a format from \"//schematic formats\"\n \" +\n" +
+"                    \"If the format is not provided, WorldEdit will\n\" +\n" +
+"                    \"attempt to automatically detect the format of the schematic\", \n" +
+"            flags = \"f\",\n"+
+"            min = 1,\n"+
+"            max = 2\n" +
+"    )\n"+
+"    @CommandPermissions({\"worldedit.clipboard.load\", \"worldedit.schematic.load\"}) /* TODO: Remove 'clipboard' perm*/\n"+
+"// RIGHT //    public void load(Player player, LocalSession session, EditSession editSession, CommandContext args) throws WorldEditException, CommandException {\n"+
+"// RIGHT //        // TODO: Update for new clipboard\n"+
+"// RIGHT //        throw new CommandException(\"Needs to be re-written again\");\n"+
+"    }";
+		System.out.println(getMethodReturnType(aux, imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
+		aux = "@Command(\n"+
+				"            aliases = { \"load\", \"l\" },\n" +
+				"            usage = \"[format] <filename>\",\n" +
+				"// LEFT //            desc = \"Load a file into your clipboard\",\n" +
+				"// LEFT //            help = \"Load a schematic file into your clipboard\n\" + \n" +
+				"                    \"Format is a format from \"//schematic formats\"\n \" +\n" +
+				"                    \"If the format is not provided, WorldEdit will\n\" +\n" +
+				"                    \"attempt to automatically detect the format of the schematic\", \n" +
+				"            flags = \"f\",\n"+
+				"            min = 1,\n"+
+				"            max = 2\n" +
+				"    )\n"+
+				"    @CommandPermissions({\"worldedit.clipboard.load\", \"worldedit.schematic.load\"}) // TODO: Remove 'clipboard' perm\n"+
+				"// RIGHT //    public void load(Player player, LocalSession session, EditSession editSession, CommandContext args) throws WorldEditException, CommandException {\n"+
+				"// RIGHT //        // TODO: Update for new clipboard\n"+
+				"// RIGHT //        throw new CommandException(\"Needs to be re-written again\");\n"+
+				"    }";
+		System.out.println(getMethodReturnType(aux, imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(getMethodReturnType("public List<Integer> soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(getMethodReturnType("public static List<Integer> soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
 		System.out.println(getMethodReturnType("public void soma(List<Integer> a, List<Integer> b, int c, int d) throws Exeception {return 1;}", imports, "(default package)", "/Users/Roberto/Documents/UFPE/Msc/Projeto/conflicts_analyzer/TestFlows/src"));
