@@ -50,75 +50,86 @@ class CompareFiles {
 		this.removeNonJavaFiles();
 
 		//move files that remained the same or only one version differs
-		String baseFolder = this.revDir + File.separator + this.baseRevName
-		this.iterateRevFolders(this.leftRevName, this.baseRevName, baseFolder, this.rightRevName)
+		this.iterateRevFolders(this.leftRevName, this.baseRevName, this.rightRevName, baseRevName, this.revDir + File.separator + this.baseRevName)
+		this.iterateRevFolders(this.leftRevName, this.baseRevName, this.rightRevName, leftRevName, this.revDir + File.separator + this.leftRevName)
+		this.iterateRevFolders(this.leftRevName, this.baseRevName, this.rightRevName, rightRevName, this.revDir + File.separator + this.rightRevName)
 	}
-		
-	private void iterateRevFolders(String leftRevName, String baseRevName, String baseFolder, String rightRevName){
 
-		File directory = new File(baseFolder)
+	private void iterateRevFolders(String leftRevName, String baseRevName, String rightRevName, String iterationRev, String iterationFolder){
+
+		File directory = new File(iterationFolder)
 		if(directory.exists()){
 			File[] fList = directory.listFiles()
 			for (File file : fList){
 				if (file.isDirectory()){
-					iterateRevFolders(leftRevName, baseRevName, file.getAbsolutePath(), rightRevName)
+					iterateRevFolders(leftRevName, baseRevName, rightRevName, iterationRev, file.getAbsolutePath())
 				} else {
-					String leftFilePath   = file.getAbsolutePath().replaceFirst(baseRevName, leftRevName)
-					String rightFilePath  = file.getAbsolutePath().replaceFirst(baseRevName, rightRevName)
-					this.compareAndMoveFiles(leftFilePath, file.getAbsolutePath() ,rightFilePath)
+					String leftFilePath   = file.getAbsolutePath().replaceFirst(iterationRev, leftRevName)
+					String rightFilePath  = file.getAbsolutePath().replaceFirst(iterationRev, rightRevName)
+					String baseFilePath = file.getAbsolutePath().replaceFirst(iterationRev, baseRevName)
+					this.compareAndMoveFiles(leftFilePath, baseFilePath ,rightFilePath, iterationRev.equals(baseRevName))
 				}
 			}
 		}
 	}
 
 
-	private void compareAndMoveFiles(String leftFile, String baseFile, String rightFile){
+	private void compareAndMoveFiles(String leftFile, String baseFile, String rightFile, boolean baseIteration){
 
 		File left = new File(leftFile)
 		File base = new File(baseFile)
 		File right = new File(rightFile)
 
-		if(left.exists() && base.exists() && right.exists()){
-			this.compareFiles(left, base, right)
-		}
-
+		this.compareFiles(left, base, right, baseIteration)
 	}
 
-	private void compareFiles (File left, File base, File right){
+	private void compareFiles (File left, File base, File right, boolean baseIteration){
 
-		boolean leftEqualsBase = FileUtils.contentEquals(left, base)
-		boolean rightEqualsBase = FileUtils.contentEquals(right, base)
+		if(baseIteration || !base.exists())
+		{
+			boolean leftEqualsBase = FileUtils.contentEquals(left, base)
+			boolean rightEqualsBase = FileUtils.contentEquals(right, base)
 
-		if(leftEqualsBase && rightEqualsBase){
-			this.filesThatRemainedTheSame = this.filesThatRemainedTheSame + 1
-			this.moveAndDeleteFiles(this.baseRevName, base, left, right)
+			if(baseIteration && base.exists() && leftEqualsBase && rightEqualsBase){
+				this.filesThatRemainedTheSame = this.filesThatRemainedTheSame + 1
+				this.moveAndDeleteFiles(this.baseRevName, base, left, right)
 
-		}else if((!leftEqualsBase) && rightEqualsBase){
-			this.filesEditedByOneDev = this.filesEditedByOneDev + 1
-			this.moveAndDeleteFiles(this.leftRevName, left, base, right)
+			}else if((!leftEqualsBase) && (rightEqualsBase)){
+				this.filesEditedByOneDev = this.filesEditedByOneDev + 1
+				this.moveAndDeleteFiles(this.leftRevName, left, base, right)
 
-		}else if(leftEqualsBase && (!rightEqualsBase)){
-			this.filesEditedByOneDev = this.filesEditedByOneDev + 1
-			this.moveAndDeleteFiles(this.rightRevName, right, base, left)
+			}else if(leftEqualsBase && (!rightEqualsBase)){
+				this.filesEditedByOneDev = this.filesEditedByOneDev + 1
+				this.moveAndDeleteFiles(this.rightRevName, right, base, left)
 
-		}else if((!leftEqualsBase) && (!rightEqualsBase)){
-			MergedFile mf = new MergedFile(base.getAbsolutePath())
-			this.filesToBeMerged.add(mf)
+			}else if(baseIteration && base.exists() && (!leftEqualsBase) && (!rightEqualsBase)){
+				MergedFile mf = new MergedFile(base.getAbsolutePath())
+				this.filesToBeMerged.add(mf)
+			}
 		}
-
 	}
 
 	private void moveAndDeleteFiles(String revName, File toBeMoved, File toBeDeleted1 = null, File toBeDeleted2 = null){
 
-		String temp = toBeMoved.getAbsolutePath().replaceFirst(revName, 'temp2')
-		FileUtils.moveFile(toBeMoved, new File(temp))
-		if(toBeDeleted1 != null)
+		if(toBeMoved.exists())
 		{
-			FileUtils.forceDelete(toBeDeleted1)
+			String temp = toBeMoved.getAbsolutePath().replaceFirst(revName, 'temp2')
+			FileUtils.moveFile(toBeMoved, new File(temp))
 		}
-		if(toBeDeleted2 != null)
+		deleteFiles(toBeDeleted1, toBeDeleted2)
+	}
+
+	private void deleteFiles(File toBeDeleted1, File toBeDeleted2)
+	{
+		deleteFile(toBeDeleted1)
+		deleteFile(toBeDeleted2)
+	}
+
+	private void deleteFile(File toBeDeleted)
+	{
+		if(toBeDeleted != null && toBeDeleted.exists())
 		{
-			FileUtils.forceDelete(toBeDeleted2)
+			FileUtils.forceDelete(toBeDeleted)
 		}
 	}
 
@@ -139,7 +150,7 @@ class CompareFiles {
 		if(sourcedir.exists()){
 			this.moveFiles(sourcedir)
 		}
-		
+
 	}
 
 	private void moveFiles(File sourceDir){
@@ -160,17 +171,17 @@ class CompareFiles {
 		String leftId = this.leftRevName.length() > 5 ? this.leftRevName.substring(this.leftRevName.length() - 5) : this.leftRevName
 		String rightId = this.rightRevName.length() > 5 ? this.rightRevName.substring(this.rightRevName.length() - 5) : this.rightRevName
 		String revName = 'rev_' + leftId + '-' + rightId
-		
+
 		String source = sourceDir.getAbsolutePath()
 
 		if(source.contains('rev_merged_git') ){
-			
+
 			if(!(source.endsWith(".java"))){
 				temp = sourceDir.getAbsolutePath().replaceFirst('rev_merged_git' , revName)
 				//FileUtils.moveFile(sourceDir, new File(temp))
 				FileUtils.copyFile(sourceDir, new File(temp))
 			}
-			
+
 		}else{
 			temp = sourceDir.getAbsolutePath().replaceFirst('temp2', revName)
 			FileUtils.moveFile(sourceDir, new File(temp))
