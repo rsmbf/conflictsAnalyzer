@@ -61,8 +61,20 @@ class MergeScenario implements Observer {
 
 	public void setMergedFiles(){
 		this.compareFiles = new CompareFiles(this.path)
+		//copyFullRevs()
 		this.compareFiles.ignoreFilesWeDontMerge()
 		this.mergedFiles = this.compareFiles.getFilesToBeMerged()
+	}
+	
+	public void copyFullRevs()
+	{
+		def baseDir = new File(new File(path).getParent())		
+		FileUtils.copyDirectory(new File(baseDir.absolutePath + File.separator + this.compareFiles.leftRevName), 
+			new File(baseDir.absolutePath + File.separator + this.compareFiles.leftRevName + "_full"))
+		FileUtils.copyDirectory(new File(baseDir.absolutePath + File.separator + this.compareFiles.baseRevName),
+			new File(baseDir.absolutePath + File.separator + this.compareFiles.baseRevName + "_full"))
+		FileUtils.copyDirectory(new File(baseDir.absolutePath + File.separator + this.compareFiles.rightRevName),
+			new File(baseDir.absolutePath + File.separator + this.compareFiles.rightRevName + "_full"))
 	}
 
 	public ArrayList<MergedFile> getMergedFiles(){
@@ -137,6 +149,10 @@ class MergeScenario implements Observer {
 			File repoDir = new File(new File(revPathParent).getParent().replace("revisions", "git"))
 			File revEditSameMc = new File(revPath.replace("revisions","editsamemc_revisions"))
 			File revEditSameMcParent = new File(revEditSameMc.getParent())
+			if(revEditSameMcParent.exists())
+			{
+				FileUtils.deleteQuietly(revEditSameMcParent)
+			}
 			FileUtils.copyDirectory(new File(revPathParent), revEditSameMcParent)
 			File revGitEditSameMc = new File(revEditSameMc.absolutePath + File.separator + "git")
 			FileUtils.copyDirectory(new File(revPath), revGitEditSameMc)
@@ -405,7 +421,7 @@ class MergeScenario implements Observer {
 	}
 
 	public static void main(String[] args){
-		MergeScenario ms = new MergeScenario('/Users/Roberto/Desktop/Teste/rev.revisions', true)
+		MergeScenario ms = new MergeScenario('/Users/Roberto/Desktop/sstests/Teste5/rev.revisions', true)
 		ms.analyzeConflicts()
 		/*Map <String,Conflict> mergeScenarioSummary = new HashMap<String, Conflict>()
 		 String type = SSMergeConflicts.EditSameMC.toString()
